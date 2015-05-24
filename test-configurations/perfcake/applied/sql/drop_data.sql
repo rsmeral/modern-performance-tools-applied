@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS `Reimbursement`;
+DROP TABLE IF EXISTS `Expense`;
+DROP TABLE IF EXISTS `Receipt`;
+DROP TABLE IF EXISTS `ExpenseReport`;
+DROP TABLE IF EXISTS `Employee`;
+DROP TABLE IF EXISTS `Purpose`;

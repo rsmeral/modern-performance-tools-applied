@@ -1,0 +1,1 @@
+insert into Purpose (description, name) values('description', 'name');

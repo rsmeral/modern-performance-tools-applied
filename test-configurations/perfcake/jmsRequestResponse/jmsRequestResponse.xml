@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scenario xmlns="urn:perfcake:scenario:3.0">
+   <generator class="DefaultMessageGenerator" threads="32">
+      <run type="time" value="600000"/>
+   </generator>
+   <sender class="RequestResponseJmsSender">
+      <property name="target" value="jms/queue/EchoRequestQueue"/>
+      <property name="responseTarget" value="jms/queue/EchoResponseQueue"/>
+      <property name="connectionFactory" value="jms/RemoteConnectionFactory"/>
+      
+      <property name="username" value="test"/>
+      <property name="password" value="testtest1!"/>
+      
+      <property name="responseUsername" value="test"/>
+      <property name="responsePassword" value="testtest1!"/>
+      
+      <property name="receivingTimeout" value="10000"/>
+      <property name="receiveAttempts" value="1"/>
+      <property name="messageType" value="STRING"/>
+      
+      <property name="jndiContextFactory" value="org.jboss.naming.remote.client.InitialContextFactory"/>
+      <property name="jndiUrl" value="remote://server:4447"/> 
+      <property name="jndiSecurityPrincipal" value="test"/>
+      <property name="jndiSecurityCredentials" value="testtest1!"/>
+
+      <property name="responseJndiSecurityPrincipal" value="test"/>
+      <property name="responseJndiSecurityCredentials" value="testtest1!"/>
+      
+   </sender>
+   <reporting>
+      <reporter class="ThroughputStatsReporter">
+         <destination class="CsvDestination">
+            <period type="time" value="5000"/>
+            <property name="path" value="${perfcake.scenario}-throughput-stats.csv"/>
+         </destination>
+         <destination class="ConsoleDestination">
+            <period type="time" value="30000" />
+         </destination>
+      </reporter>
+      <reporter class="ResponseTimeStatsReporter">
+         <destination class="CsvDestination">
+            <period type="time" value="5000"/>
+            <property name="path" value="${perfcake.scenario}-response-stats.csv"/>
+         </destination>
+         <destination class="ConsoleDestination">
+            <period type="time" value="30000" />
+         </destination>
+      </reporter>
+   </reporting>
+   <messages>
+      <message content="Hello" />
+   </messages>
+   
+</scenario>

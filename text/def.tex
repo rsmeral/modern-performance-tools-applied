@@ -1,0 +1,75 @@
+
+% english university/faculty name
+\renewcommand{\facultyname}{Faculty of Informatics}
+\renewcommand{\universityname}{Masaryk University}
+
+\graphicspath{ {./resources/} }
+
+% hyperref
+\hypersetup{
+    pdftitle={Modern Performance Tools Applied},
+    pdfauthor={Ron ©meral},
+    pdfkeywords={performance testing, performance evaluation, stress testing, load testing, workload modelling},
+    linktocpage=true
+}
+
+% inline listings
+\newcommand{\inlinelisting}{%
+\lstset{%
+    basicstyle=\ttfamily\small,%
+    frame=b,%
+    xleftmargin=17pt,%
+    framexleftmargin=17pt,%
+    framexrightmargin=5pt,%
+    framexbottommargin=4pt,%
+    aboveskip=\bigskipamount,%
+    belowskip=\bigskipamount,%
+    keywordstyle=\color{blue},%
+    commentstyle=\color{black},%
+    columns=fullflexible}}
+
+\lstloadlanguages{
+	bash,
+    Java, 
+    XML
+}
+
+% XML listing
+\newcommand{\xmllisting}{%
+\lstset{%
+    basicstyle=\ttfamily\footnotesize,%
+    xleftmargin=0pt,%
+    framexleftmargin=0pt,%
+    framexrightmargin=0pt,%
+    framexbottommargin=0pt,%
+    keywordstyle=\color{blue},%
+    commentstyle=\color{black},%
+    columns=fullflexible,%
+    showstringspaces=false,%
+    commentstyle=\color{gray}\upshape,%
+    frame=n,%
+    breaklines=true}}
+
+% listings language
+\definecolor{gray}{rgb}{0.4,0.4,0.4}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.6}
+\definecolor{cyan}{rgb}{0.0,0.6,0.6}
+\lstdefinelanguage{XML}{
+    morestring=[b]",
+    morestring=[s]{>}{<},
+    morecomment=[s]{<?}{?>},
+    stringstyle=\color{black},
+    identifierstyle=\color{darkblue},
+    keywordstyle=\color{cyan},
+    morekeywords={ThreadGroup, stringProp, elementProp, boolProp, intProp}
+}
+
+% captions for listings
+\DeclareCaptionFont{listing-caption}{\color{white}\sffamily}
+\DeclareCaptionFormat{listing}{\colorbox[cmyk]{0.43, 0.35, 0.35,0.01}{\parbox{\textwidth}{\hspace{15pt}#1#2#3}}}
+\captionsetup[lstlisting]{format=listing, labelfont=listing-caption, textfont=listing-caption, singlelinecheck=false, margin=0pt, font={bf}}
+
+% appendix chapter
+\newcommand{\appendixchapter}[1]{%
+    \refstepcounter{chapter}%
+    \chapter*{{\normalsize Appendix A}\\ #1}}%

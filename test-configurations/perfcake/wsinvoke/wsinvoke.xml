@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scenario xmlns="urn:perfcake:scenario:3.0">
+   <generator class="DefaultMessageGenerator" threads="32">
+      <run type="time" value="600000"/>
+   </generator>
+   <sender class="HttpSender">
+      <property name="target" value="http://server:8080/echoapp/EchoService"/>
+      <property name="method" value="POST"/>
+   </sender>
+   <reporting>
+      <reporter class="ThroughputStatsReporter">
+         <destination class="CsvDestination">
+            <period type="time" value="5000"/>
+            <property name="path" value="${perfcake.scenario}-throughput-stats.csv"/>
+         </destination>
+         <destination class="ConsoleDestination">
+            <period type="time" value="30000" />
+         </destination>
+      </reporter>
+      <reporter class="ResponseTimeStatsReporter">
+         <destination class="CsvDestination">
+            <period type="time" value="5000"/>
+            <property name="path" value="${perfcake.scenario}-response-stats.csv"/>
+         </destination>
+         <destination class="ConsoleDestination">
+            <period type="time" value="30000" />
+         </destination>
+      </reporter>
+   </reporting>
+   <messages>
+      <message uri="WsInvokeBody.xml" />
+   </messages>
+</scenario>

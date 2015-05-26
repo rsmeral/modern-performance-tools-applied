@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>First,prepare...</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>10</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>TEST</name>
+          <description></description>
+          <defaultValue>wsinvoke</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DUMMY_ITERATION</name>
+          <description></description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DURATION</name>
+          <description></description>
+          <defaultValue>600</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>controller</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>rm -rf $WORKSPACE/*
+. /root/dp/func-master.sh &amp;&amp; prepare_env
+cd /root/dp/testing/grinder
+
+# MASTER prepeare
+./start_console.sh
+
+set +e
+while ! nc -vz localhost 6373; do sleep 1; done
+set -e
+
+# CLIENT prepare
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/grinder
+  rm -rf output
+  rm -f ~/dp/stats/*
+  cat /sys/devices/system/cpu/online
+  
+  echo &quot;1&quot; &gt;/proc/sys/net/ipv4/tcp_tw_reuse
+  echo &quot;1&quot; &gt;/proc/sys/net/ipv4/tcp_tw_recycle  
+
+  start_monitoring
+  ./start_agent.sh $TEST &lt;/dev/null
+EOF
+
+# SERVER prepare
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/prepare-echo-server.sh &lt;/dev/null
+  rm -f ~/dp/stats/*
+  start_monitoring
+EOF
+
+# START THE BENCHMARK, blocks
+curl -S -X POST localhost:6373/agents/start-workers
+sleep $DURATION
+curl -S -X POST localhost:6373/agents/stop
+
+# AFTER BENCHMARK
+./stop_console.sh
+
+# SERVER stop
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/stop-echo-server.sh
+  stop_monitoring
+EOF
+
+# CLIENT stop
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/grinder
+  stop_monitoring
+  ./stop_agent.sh
+  tail -n 100 output/${CLIENT_HOST}-0.log &gt; output/result.log
+  rm -f output/${CLIENT_HOST}-0.log
+  zip -q output/data.zip output/${CLIENT_HOST}-0-data.log
+  rm -f output/${CLIENT_HOST}-0-data.log
+EOF
+
+cd $WORKSPACE
+# COLLECT OUTPUT
+scp $SERVER_HOST:dp/jboss-eap-6.3/standalone/log/server.log .
+scp $SERVER_HOST:dp/stats/* .
+scp $CLIENT_HOST:dp/stats/* .
+scp -r $CLIENT_HOST:dp/testing/grinder/output/* .
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers/>
+</project>

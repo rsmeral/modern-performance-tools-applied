@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>First, copy the benchmark deployment to /root/dp/testing/faban/deploy</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>10</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>DRIVER_NAME</name>
+          <description></description>
+          <defaultValue>WSInvokeDriver</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BENCHMARK_NAME</name>
+          <description></description>
+          <defaultValue>wsinvoke</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>controller</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>rm -rf $WORKSPACE/*
+. /root/dp/func-master.sh &amp;&amp; prepare_env
+cd /root/dp/testing/faban
+
+# MASTER
+./prepare_benchmark.sh $BENCHMARK_NAME
+./start_registry.sh
+
+# CLIENT prepare
+scp deploy/${BENCHMARK_NAME}.jar $CLIENT_HOST:dp/testing/faban/deploy/
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/faban
+  ./prepare_benchmark.sh $BENCHMARK_NAME
+  rm -f ~/dp/stats/*
+  cat /sys/devices/system/cpu/online
+  start_monitoring
+  ./start_agent.sh $BENCHMARK_NAME $DRIVER_NAME
+EOF
+
+# SERVER prepare
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/prepare-echo-server.sh &lt;/dev/null
+  rm -f ~/dp/stats/*
+  start_monitoring
+EOF
+
+# START THE BENCHMARK, blocks
+./start_master.sh $BENCHMARK_NAME
+
+# AFTER BENCHMARK
+./stop_registry.sh
+
+# SERVER stop
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/stop-echo-server.sh
+  stop_monitoring
+EOF
+
+# CLIENT stop
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/faban
+  stop_monitoring
+  ./stop_agent.sh
+EOF
+
+cd $WORKSPACE
+# COLLECT OUTPUT
+cp /tmp/faban-output/*/* .
+scp $SERVER_HOST:dp/jboss-eap-6.3/standalone/log/server.log .
+scp $SERVER_HOST:dp/stats/* .
+scp $CLIENT_HOST:dp/stats/* .
+
+# cleanup
+rm -rf /tmp/faban-output/*
+
+echo RESULT
+grep &quot;ops/sec&quot; summary.xml | head -n 1 | sed &quot;s%.*&gt;\([^&lt;]*\)&lt;.*%\1%&quot;
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers/>
+</project>

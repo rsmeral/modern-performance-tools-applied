@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>First,prepare...</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>10</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>TEST</name>
+          <description></description>
+          <defaultValue>wsinvoke</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DUMMY_ITERATION</name>
+          <description></description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>controller</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>rm -rf $WORKSPACE/*
+. /root/dp/func-master.sh &amp;&amp; prepare_env
+cd /root/dp/testing/jmeter
+
+rm -f *.log
+
+# CLIENT prepare
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/jmeter
+  rm -f ~/dp/stats/*
+  rm -f *.log
+  cat /sys/devices/system/cpu/online
+  start_monitoring
+  ./start-server.sh &lt;/dev/null
+EOF
+
+# SERVER prepare
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/prepare-echo-server.sh &lt;/dev/null
+  rm -f ~/dp/stats/*
+  start_monitoring
+EOF
+
+# START THE BENCHMARK, blocks
+./start-jmeter.sh $TEST
+
+# SERVER stop
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/stop-echo-server.sh
+  stop_monitoring
+EOF
+
+# CLIENT stop
+ssh $CLIENT_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-client.sh &amp;&amp; prepare_env
+  cd dp/testing/jmeter
+  stop_monitoring
+  ./stop-server.sh
+EOF
+
+cd $WORKSPACE
+# COLLECT OUTPUT
+cp /root/dp/testing/jmeter/jmeter.log .
+scp $SERVER_HOST:dp/jboss-eap-6.3/standalone/log/server.log .
+scp $SERVER_HOST:dp/stats/* .
+scp $CLIENT_HOST:dp/stats/* .
+scp $CLIENT_HOST:dp/testing/jmeter/jmeter-server.log .
+
+# cleanup
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers/>
+</project>

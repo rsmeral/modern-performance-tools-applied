@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>First, copy the simulation to client&apos;s /root/dp/testing/gatling/user-files/simulations/&#xd;
+Also copy request body to /root/dp/testing/gatling/user-files/bodies/</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>10</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>DUMMY_ITERATION</name>
+          <description></description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMULATION</name>
+          <description></description>
+          <defaultValue>WsInvoke</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>client</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>rm -rf $WORKSPACE/*
+. /root/dp/func-client.sh &amp;&amp; prepare_env
+cd /root/dp/gatling
+
+# CLIENT prepare
+rm -f ~/dp/stats/*
+rm -rf /root/dp/gatling/results/*
+cat /sys/devices/system/cpu/online
+ulimit -n 300000
+start_monitoring
+
+rm -rf /root/dp/gatling/lib/user
+mkdir /root/dp/gatling/lib/user
+
+# SERVER prepare
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/prepare-echo-server.sh &lt;/dev/null
+  rm -f ~/dp/stats/*
+  start_monitoring
+EOF
+
+# START THE BENCHMARK, blocks
+bin/gatling.sh -m -s $SIMULATION
+
+# SERVER stop
+ssh $SERVER_HOST /bin/bash &lt;&lt;EOF
+  . /root/dp/func-server.sh &amp;&amp; prepare_env
+  dp/stop-echo-server.sh
+  stop_monitoring
+EOF
+
+# CLIENT stop
+stop_monitoring
+
+cd $WORKSPACE
+# COLLECT OUTPUT
+rm -f /root/dp/gatling/results/*/simulation.log
+zip -qr gatling-results.zip /root/dp/gatling/results/*
+scp $SERVER_HOST:dp/jboss-eap-6.3/standalone/log/server.log .
+scp $SERVER_HOST:dp/stats/* .
+cp /root/dp/stats/* .
+
+# echo RESULT
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers/>
+</project>
